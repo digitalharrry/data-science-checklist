@@ -1,7 +1,8 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime
 import os
+import random
 
 # ----------------------------
 # Page Configuration
@@ -11,21 +12,26 @@ st.title("📅 Data Science 52-Week Learning Plan Tracker")
 
 st.markdown("""
 Welcome to your personalized **Data Science Learning Tracker** 🎯  
-Upload your `52_week_plan.csv` and track your daily & weekly progress easily.  
+Upload your `52_week_plan.xlsx` and track your daily & weekly progress easily.  
 """)
 
 # ----------------------------
-# File Upload
+# File Upload (Excel)
 # ----------------------------
-uploaded_file = st.file_uploader("📂 Upload your 52-week plan (CSV format)", type=["csv"])
+uploaded_file = st.file_uploader("📂 Upload your 52-week plan (Excel format)", type=["xlsx"])
 
 if uploaded_file:
-    df = pd.read_csv(uploaded_file)
+    # Read Excel file
+    try:
+        df = pd.read_excel(uploaded_file)
+    except Exception as e:
+        st.error(f"❌ Failed to read the Excel file: {e}")
+        st.stop()
 
     # Expected columns
     required_cols = ["Week", "Start_Date", "End_Date", "Task", "Status"]
     if not all(col in df.columns for col in required_cols):
-        st.error(f"Your CSV must have the following columns: {required_cols}")
+        st.error(f"Your Excel file must have the following columns: {required_cols}")
         st.stop()
 
     # Convert date columns
@@ -67,8 +73,8 @@ if uploaded_file:
     selected_week = st.selectbox("Select Week to mark as complete:", df["Week"].tolist())
     if st.button("Mark as Done"):
         df.loc[df["Week"] == selected_week, "Status"] = "Done"
-        df.to_csv("progress_saved.csv", index=False)
-        st.success(f"Week {selected_week} marked as Done! Progress saved locally.")
+        df.to_excel("progress_saved.xlsx", index=False)
+        st.success(f"Week {selected_week} marked as Done! Progress saved locally to `progress_saved.xlsx`.")
 
     # ----------------------------
     # Show Full Plan
@@ -91,17 +97,15 @@ if uploaded_file:
         "Code. Learn. Repeat. You’re building something powerful.",
         "Don’t aim to be perfect. Aim to be better than yesterday."
     ]
-    import random
     st.success(random.choice(quotes))
 
 else:
-    st.info("👆 Upload your CSV plan above to begin tracking progress.")
+    st.info("👆 Upload your Excel plan above to begin tracking progress.")
     st.markdown("""
-    **CSV Format Example:**
+    **Excel Format Example (Sheet1):**
     | Week | Start_Date | End_Date | Task | Status |
     |------|-------------|-----------|------|--------|
     | 1 | 2025-10-04 | 2025-10-10 | Python basics, loops, functions | Pending |
     | 2 | 2025-10-11 | 2025-10-17 | Numpy, Pandas, Matplotlib | Pending |
     | … | … | … | … | … |
     """)
-
