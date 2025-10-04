@@ -1,83 +1,83 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-import os
 import random
+import os
 
 # ----------------------------
 # Page Configuration
 # ----------------------------
-st.set_page_config(page_title="📅 Data Science 52-Week Tracker", layout="centered")
-st.title("📅 Data Science 52-Week Learning Plan Tracker")
+st.set_page_config(page_title="📅 52-Week Data Science Plan", layout="centered")
+st.title("📅 52-Week Data Science Learning Tracker")
 
 st.markdown("""
-Welcome to your personalized **Data Science Learning Tracker** 🎯  
-Upload your `52_week_plan.xlsx` and track your daily & weekly progress easily.  
+Welcome to your **Data Science 52-Week Tracker** 🎯  
+Upload your `52_week_plan.xlsx` and track your weekly learning journey across different domains.
 """)
 
 # ----------------------------
-# File Upload (Excel)
+# File Upload
 # ----------------------------
-uploaded_file = st.file_uploader("📂 Upload your 52-week plan (Excel format)", type=["xlsx"])
+uploaded_file = st.file_uploader("📂 Upload your Excel plan", type=["xlsx"])
 
 if uploaded_file:
-    # Read Excel file
     try:
         df = pd.read_excel(uploaded_file)
     except Exception as e:
         st.error(f"❌ Failed to read the Excel file: {e}")
         st.stop()
 
-    # Expected columns
-    required_cols = ["Week", "Start_Date", "End_Date", "Task", "Status"]
-    if not all(col in df.columns for col in required_cols):
-        st.error(f"Your Excel file must have the following columns: {required_cols}")
-        st.stop()
+    # Add a 'Status' column if it doesn't exist
+    if "Status" not in df.columns:
+        df["Status"] = "Pending"
 
-    # Convert date columns
-    df["Start_Date"] = pd.to_datetime(df["Start_Date"]).dt.date
-    df["End_Date"] = pd.to_datetime(df["End_Date"]).dt.date
+    # Extract week number and start date (for logic)
+    df["Week_Number"] = df["Week"].str.extract(r"Week\s*(\d+)", expand=False)
+    df["Week_Number"] = pd.to_numeric(df["Week_Number"], errors='coerce')
 
-    # ----------------------------
-    # Determine current week
-    # ----------------------------
+    # Optional: use today's date to determine current week
     today = datetime.today().date()
-    current_week = df[(df["Start_Date"] <= today) & (df["End_Date"] >= today)]
+    current_week_row = df[df["Status"] != "Done"].head(1)
 
-    if current_week.empty:
-        st.warning("✅ Either your plan hasn’t started yet or it’s completed!")
-    else:
-        week_no = current_week["Week"].values[0]
-        st.subheader(f"📆 Current Week: **Week {week_no}**")
-        st.write(f"🗓️ Date Range: {current_week['Start_Date'].values[0]} → {current_week['End_Date'].values[0]}")
+    if not current_week_row.empty:
+        current_week = current_week_row.iloc[0]
+        st.subheader(f"📆 Current Week: **{current_week['Week']}**")
 
-        # Show current week tasks
+        # Display all sections for the current week
         st.markdown("### 📘 This Week's Focus")
-        st.info(current_week["Task"].values[0])
+        topics = ["Coding (Python / Libraries)", "Maths / Stats", "SQL / Excel / BI", "ML / DL / NLP", "Career / Projects / Notes"]
+        for topic in topics:
+            if topic in df.columns and pd.notna(current_week[topic]):
+                st.markdown(f"**{topic}**: {current_week[topic]}")
+    else:
+        st.success("🎉 All weeks are marked as done! Great job!")
 
     # ----------------------------
-    # Progress Section
+    # Mark Week as Done
     # ----------------------------
     st.markdown("---")
-    st.subheader("📊 Progress Tracker")
+    st.subheader("✅ Mark a Week as Done")
+    week_options = df["Week"].tolist()
+    selected_week = st.selectbox("Select Week:", week_options)
 
-    completed = df[df["Status"].str.lower() == "done"]
-    progress = len(completed) / len(df)
-    st.progress(progress)
-    st.write(f"✅ **{len(completed)} / {len(df)} weeks completed** ({progress*100:.1f}%)")
-
-    # ----------------------------
-    # Update Progress (Mark Week Done)
-    # ----------------------------
-    st.markdown("### ✅ Mark Week as Done")
-    selected_week = st.selectbox("Select Week to mark as complete:", df["Week"].tolist())
     if st.button("Mark as Done"):
         df.loc[df["Week"] == selected_week, "Status"] = "Done"
-        df.to_excel("progress_saved.xlsx", index=False)
-        st.success(f"Week {selected_week} marked as Done! Progress saved locally to `progress_saved.xlsx`.")
+        df.to_excel("progress_updated.xlsx", index=False)
+        st.success(f"✅ Week '{selected_week}' marked as Done! Saved to `progress_updated.xlsx`.")
 
     # ----------------------------
-    # Show Full Plan
+    # Progress Tracker
+    # ----------------------------
+    st.markdown("---")
+    st.subheader("📊 Progress Overview")
+
+    done_weeks = df[df["Status"].str.lower() == "done"]
+    progress = len(done_weeks) / len(df)
+    st.progress(progress)
+    st.write(f"✅ **{len(done_weeks)} / {len(df)} weeks completed** ({progress*100:.1f}%)")
+
+    # ----------------------------
+    # View Full Plan
     # ----------------------------
     st.markdown("---")
     with st.expander("📅 View Full 52-Week Plan"):
@@ -87,25 +87,26 @@ if uploaded_file:
         ))
 
     # ----------------------------
-    # Motivation Section
+    # Motivation Zone
     # ----------------------------
     st.markdown("---")
     st.markdown("### 💡 Motivation Zone")
     quotes = [
-        "Consistency beats intensity — keep showing up daily.",
-        "Every data scientist started where you are today.",
-        "Code. Learn. Repeat. You’re building something powerful.",
-        "Don’t aim to be perfect. Aim to be better than yesterday."
+        "Keep pushing—consistency is your superpower!",
+        "Every great data scientist was once a beginner.",
+        "Focus on progress, not perfection.",
+        "Small steps every day lead to big results.",
+        "You’re building the future. One week at a time."
     ]
     st.success(random.choice(quotes))
 
 else:
-    st.info("👆 Upload your Excel plan above to begin tracking progress.")
+    st.info("👆 Upload your Excel file to get started.")
     st.markdown("""
-    **Excel Format Example (Sheet1):**
-    | Week | Start_Date | End_Date | Task | Status |
-    |------|-------------|-----------|------|--------|
-    | 1 | 2025-10-04 | 2025-10-10 | Python basics, loops, functions | Pending |
-    | 2 | 2025-10-11 | 2025-10-17 | Numpy, Pandas, Matplotlib | Pending |
-    | … | … | … | … | … |
-    """)
+**Expected Excel format:**
+
+| Week | Coding (Python / Libraries) | Maths / Stats | SQL / Excel / BI | ML / DL / NLP | Career / Projects / Notes |
+|------|------------------------------|----------------|-------------------|----------------|-----------------------------|
+| Week 1 (Oct 4–10, 2025) | Python Basics: variables, loops | Arithmetic, Fractions | SQL Basics: SELECT, WHERE | | Practice problems |
+| ... | ... | ... | ... | ... | ... |
+""")
